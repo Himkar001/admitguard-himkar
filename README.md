@@ -14,3 +14,19 @@ AdmitGuard enforces eligibility rules at the point of data entry using real-time
 - Built using Google AI Studio (Vibe Coding)
 
 This repository follows a sprint-based development approach.
+
+## Wireframes (Sprint 1)
+
+Low-fidelity wireframes created to validate UX and rule enforcement before coding.
+
+Screens included:
+- **Candidate Eligibility Form** — inline validation, strict vs soft rules
+- **Submission Success Screen** — candidate summary + audit reference
+- **Exception Handling View** — rationale capture and exception count
+- **Audit Log View** — submission history and manager review flags
+
+Screenshots available in `/docs`:
+- wireframe-1-form.png
+- wireframe-2-success.png
+- wireframe-3-exceptions.png
+- wireframe-4-audit.png
