@@ -1,0 +1,5 @@
+{
+  "name": "AdmitGuard",
+  "description": "Enterprise-grade admissions operations tool for IITs and IIMs to evaluate candidate eligibility.",
+  "requestFramePermissions": []
+}

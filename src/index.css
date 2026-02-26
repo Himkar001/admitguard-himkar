@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2D2A55;
+  --color-header-bg: #1F1B3A;
+  --color-accent: #6C63FF;
+  --color-page-bg: #F5F6FA;
+  --color-border-cool: #E1E4EE;
+  --color-card-bg: #FFFFFF;
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
