@@ -30,3 +30,33 @@ Screenshots available in `/docs`:
 - wireframe-2-success.png
 - wireframe-3-exceptions.png
 - wireframe-4-audit.png
+
+## Core Functionality (Sprint 2)
+
+AdmitGuard currently functions as a complete eligibility evaluation gate with governance and auditability.
+
+### Eligibility Evaluation
+- Real-time field-level validation during data entry
+- Strict rules block progression immediately with clear messages
+- Soft rule violations require explicit exception handling
+
+### Exception Handling
+- Per-rule exception overrides for soft eligibility violations
+- Mandatory, quality-enforced rationale for every exception
+- Automatic exception counting with manager review flag when limits are exceeded
+
+### Config-Driven Rules
+- All eligibility rules and thresholds are defined in a centralized configuration
+- Rule updates do not require UI or logic changes
+
+### Audit Trail
+- Every eligibility evaluation is recorded with:
+  - Timestamp
+  - Candidate details
+  - Eligibility outcome
+  - Exceptions applied with rationale
+  - Governance flags
+- Audit data is stored client-side for the prototype and can be cleared explicitly
+
+### Scope Clarification
+- The system focuses strictly on eligibility validation and audit readiness
