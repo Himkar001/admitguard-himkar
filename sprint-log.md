@@ -27,3 +27,36 @@
   - Enforced keyword-based rationale validation for audit readiness
 - **Blockers:** None
 - **Outcome:** AdmitGuard functions as a complete eligibility gate with audit trail
+
+## Sprint 3 
+
+- **Goal:** Deploy the working application and prepare it for evaluation and sharing
+- **Done:**
+  - Integrated frontend application exported from Google AI Studio
+  - Verified local build and development server using Vite
+  - Deployed AdmitGuard as a live client-side application on Vercel
+  - Enabled CSV and JSON export of audit logs
+- **Blockers:** 
+  - Initial difficulty locating export option in AI Studio; resolved by using download feature
+- **Key Decisions:**
+  - Chose Vercel over GitHub Pages for faster deployment and a more professional presentation
+  - Deferred README deployment updates to Sprint 4 to avoid fragmenting Sprint 3 commits
+- **Outcome:** 
+  - AdmitGuard is accessible via a public URL and fully functional in a deployed environment
+
+---
+
+## Sprint 4 
+
+- **Goal:** Make the project evaluator-ready through clear documentation 
+- **Done:**
+  - Updated README with live deployment link and local run instructions
+  - Added screenshots demonstrating form validation, exception handling, evaluation result, and audit log
+  - Created architecture documentation explaining data flow, rules engine, and audit design
+  - Prepared a structured presentation deck outlining the business problem, solution, and impact
+- **Blockers:** None
+- **Key Decisions:**
+  - Focused Sprint 4 strictly on documentation and communication, with no code or UI changes
+  - Used screenshots and demo flow to reduce the need for live explanation during evaluation
+- **Outcome:** 
+  - Project is fully documented, easy to understand, and ready for review, demo, or interview discussion

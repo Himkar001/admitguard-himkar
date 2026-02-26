@@ -60,3 +60,52 @@ AdmitGuard currently functions as a complete eligibility evaluation gate with go
 
 ### Scope Clarification
 - The system focuses strictly on eligibility validation and audit readiness
+
+## Live Deployment (Sprint 3)
+
+The AdmitGuard application is deployed as a client-side web application.
+
+🔗 **Live URL:**  
+https://admitguard-himkar.vercel.app
+
+> Note: The application runs entirely on the client side. No backend services are used in this prototype.
+
+---
+
+## Running the Project Locally
+
+To run the project locally:
+
+```bash
+npm install
+npm run dev
+
+## How to Use AdmitGuard (Demo Flow)
+
+1. Enter candidate details in the eligibility form.
+2. Strict rule violations will block progression immediately with clear messages.
+3. Soft rule violations can be overridden using structured exception toggles.
+4. Provide a professional rationale for every exception (quality enforced).
+5. Evaluate eligibility to view the final decision.
+6. Review the audit log to see all recorded evaluations with governance flags.
+7. Export audit data as CSV or JSON if required.
+
+---
+
+## Scope & Design Decisions
+
+- The system is intentionally client-side to enable rapid prototyping and easy sharing.
+- All eligibility rules are config-driven and not hardcoded in UI logic.
+- Strict rules enforce hard eligibility blocks; soft rules allow governed exceptions.
+- Exceptions require structured, quality-validated rationale.
+- Audit records are immutable once created.
+- Save Draft and PDF export features were intentionally excluded to maintain scope discipline.
+
+---
+
+## Documentation & Artifacts
+
+- **Architecture Overview:** `docs/architecture.md`
+- **Presentation Deck:** `docs/presentation.pdf`
+- **Rule Configuration:** `config/rules.json`
+- **Sprint Log:** `sprint-log.md`
