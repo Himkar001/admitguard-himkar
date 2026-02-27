@@ -110,6 +110,23 @@ npm run dev
 - **Rule Configuration:** `config/rules.json`
 - **Sprint Log:** `sprint-log.md`
 
+
+## Documentation & Presentation  (sprint 5)
+
+- **Goal:** Make the project evaluator-ready through clear documentation and presentation
+- **Done:**
+  - Updated README with live deployment link and local run instructions
+  - Added screenshots demonstrating form validation, exception handling, evaluation result, and audit log
+  - Created architecture documentation explaining data flow, rules engine, and audit design
+  - Prepared a structured presentation deck outlining the business problem, solution, and impact
+- **Blockers:** None
+- **Key Decisions:**
+  - Focused Sprint 4 strictly on documentation and communication, with no code or UI changes
+  - Used screenshots and demo flow to reduce the need for live explanation during evaluation
+- **Outcome:** 
+  - Project is fully documented, easy to understand, and ready for review, demo, or interview discussion
+
+
 ## Advanced Governance Features (Sprint 5)
 
 ### Rules Configuration Console
@@ -152,3 +169,4 @@ Each export includes:
 - Governance flags and timestamps
 
 The export reflects the audit log exactly and does not modify stored records.
+

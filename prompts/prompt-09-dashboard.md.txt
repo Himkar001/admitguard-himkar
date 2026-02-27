@@ -1,0 +1,32 @@
+## Prompt 09 — Audit Dashboard
+
+Enhance the Audit Log view by adding a read-only operational dashboard.
+
+Context:
+AdmitGuard already stores eligibility evaluations in an audit log.
+Operations and managers need high-level visibility into outcomes and exception usage.
+
+Task:
+Add a summary dashboard at the top of the Audit Log page.
+
+Dashboard Metrics:
+- Total evaluations
+- Eligible candidates
+- Eligible with exceptions
+- Blocked / rejected candidates
+- Manager review required count
+- Exception usage rate (percentage)
+
+Rules:
+- All metrics must be derived dynamically from existing audit log records.
+- No new data storage or backend services.
+- Dashboard must update automatically when audit data changes.
+- Clearing the audit log must reset dashboard values.
+
+UI Requirements:
+- Display metrics as compact statistic cards.
+- Use subtle color cues (green, amber, red).
+- No charts or interactive filtering.
+
+Outcome:
+Provide operational visibility without modifying eligibility logic or audit data.

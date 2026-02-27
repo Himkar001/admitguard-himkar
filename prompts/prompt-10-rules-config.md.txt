@@ -1,0 +1,31 @@
+## Prompt 10 — Rules Configuration Page
+
+Add a Rules Configuration page that allows operations teams to modify eligibility thresholds without changing application code.
+
+Editable Parameters:
+- Minimum and maximum age limits
+- Percentage threshold
+- CGPA minimum and maximum
+- Screening test score limits
+- Graduation year range
+- Maximum allowed exceptions per candidate
+
+Behavior:
+- Persist rule configuration in client-side storage.
+- Use default values if no configuration exists.
+- Apply changes only to future evaluations.
+- Provide a reset-to-default option.
+
+Validation:
+- Ensure logical min/max constraints.
+- Block saving if configuration is invalid.
+- Show clear, human-readable validation messages.
+
+Constraints:
+- Do not allow adding or removing rules.
+- Do not change strict vs soft rule classification.
+- Do not affect historical audit records.
+- No backend or authentication.
+
+Outcome:
+Enable controlled rule evolution while preserving governance and audit integrity.

@@ -1,0 +1,42 @@
+## Prompt 11 — Full Audit CSV Export
+
+Enhance the CSV export functionality to provide a complete, audit-ready data extract.
+
+Each CSV row should represent one eligibility evaluation and include:
+
+Candidate Details:
+- Full Name
+- Email
+- Phone Number
+- Aadhaar Number
+- Date of Birth
+- Calculated Age
+
+Academic & Assessment:
+- Highest Qualification
+- Graduation Year
+- Percentage / CGPA type and value
+- Screening Test Score
+
+Process & Outcome:
+- Interview Status
+- Offer Letter Sent
+- Final Eligibility Status
+- Exception Count
+- Manager Review Required flag
+
+Exception Details:
+- Rules violated (comma-separated)
+- Rationales provided (pipe-separated or JSON string)
+
+Audit Metadata:
+- Evaluation timestamp
+- Evaluation ID (if present)
+
+Rules:
+- Export data must be derived directly from the existing audit log.
+- Do not recalculate eligibility.
+- Export must not modify stored audit data.
+
+Outcome:
+Provide a compliance-ready CSV suitable for operational review and reporting.
