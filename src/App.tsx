@@ -23,7 +23,10 @@ import {
   Eye,
   Trash2,
   Download,
-  FileJson
+  FileJson,
+  Settings,
+  Save,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ELIGIBILITY_RULES } from './rulesConfig';
@@ -33,7 +36,17 @@ interface AuditRecord {
   timestamp: string;
   candidateName: string;
   candidateEmail: string;
+  phone?: string;
+  aadhaar?: string;
+  dob?: string;
+  age?: number;
+  qualification?: string;
+  gradYear?: string;
+  scoreType?: 'Percentage' | 'CGPA';
+  score?: string;
+  testScore?: string;
   interviewStatus: string;
+  offerSent?: string;
   outcome: 'Eligible' | 'Exception Approved' | 'Blocked';
   strictRuleResults: Record<string, string>;
   softRuleViolations: Record<string, string>;
@@ -44,8 +57,12 @@ interface AuditRecord {
 }
 
 export default function App() {
-  const [view, setView] = useState<'form' | 'success' | 'logs'>('form');
+  const [view, setView] = useState<'form' | 'success' | 'logs' | 'config'>('form');
   const [auditLogs, setAuditLogs] = useState<AuditRecord[]>([]);
+  const [rules, setRules] = useState(ELIGIBILITY_RULES);
+  const [configRules, setConfigRules] = useState(ELIGIBILITY_RULES);
+  const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [currentEvaluation, setCurrentEvaluation] = useState<AuditRecord | null>(null);
   const [selectedLog, setSelectedLog] = useState<AuditRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,7 +105,7 @@ export default function App() {
   const validate = (data: typeof formData, currentOverrides: Record<string, boolean>, currentRationale: string) => {
     const newErrors: Record<string, string> = {};
     const newSoftErrors: Record<string, string> = {};
-    const { strict_rules, soft_rules, exception_policy } = ELIGIBILITY_RULES;
+    const { strict_rules, soft_rules, exception_policy } = rules;
 
     // --- STRICT RULES ---
     if (data.fullName !== undefined) {
@@ -229,7 +246,7 @@ export default function App() {
   // Initial validation
   useEffect(() => {
     validate(formData, overrides, rationale);
-  }, [scoreType]);
+  }, [scoreType, rules]);
 
   const exceptionsUsed = Object.values(overrides).filter(v => v).length;
   const anyExceptionEnabled = Object.values(overrides).some(v => v);
@@ -243,7 +260,58 @@ export default function App() {
         console.error('Failed to parse audit logs', e);
       }
     }
+
+    const savedRules = localStorage.getItem('admitguard_rules_config');
+    if (savedRules) {
+      try {
+        const parsed = JSON.parse(savedRules);
+        // Merge with default ELIGIBILITY_RULES to preserve RegExp objects in strict_rules
+        const merged = {
+          ...ELIGIBILITY_RULES,
+          soft_rules: parsed.soft_rules || ELIGIBILITY_RULES.soft_rules,
+          exception_policy: parsed.exception_policy || ELIGIBILITY_RULES.exception_policy
+        };
+        setRules(merged);
+        setConfigRules(merged);
+      } catch (e) {
+        console.error('Failed to parse rules config', e);
+      }
+    }
   }, []);
+
+  const handleSaveConfig = () => {
+    const errors: Record<string, string> = {};
+    
+    if (configRules.soft_rules.percentage.min < 0 || configRules.soft_rules.percentage.min > 100) {
+      errors.percentage = 'Percentage must be between 0 and 100.';
+    }
+    if (configRules.soft_rules.cgpa.min < 0 || configRules.soft_rules.cgpa.min > configRules.soft_rules.cgpa.max) {
+      errors.cgpa = 'Min CGPA must be between 0 and Max CGPA.';
+    }
+    if (configRules.soft_rules.screeningScore.min < 0 || configRules.soft_rules.screeningScore.min > configRules.soft_rules.screeningScore.max) {
+      errors.screeningScore = 'Min Screening Score must be between 0 and Max Screening Score.';
+    }
+    if (configRules.soft_rules.age.min < 0 || configRules.soft_rules.age.min > configRules.soft_rules.age.max) {
+      errors.age = 'Min Age must be between 0 and Max Age.';
+    }
+    if (configRules.soft_rules.graduationYear.min > configRules.soft_rules.graduationYear.max) {
+      errors.graduationYear = 'Start Year cannot be after End Year.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setConfigErrors(errors);
+      setSaveStatus('error');
+      return;
+    }
+
+    setSaveStatus('saving');
+    setTimeout(() => {
+      localStorage.setItem('admitguard_rules_config', JSON.stringify(configRules));
+      setRules(configRules);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }, 800);
+  };
 
   const handleEvaluate = () => {
     if (!isFormValid) return;
@@ -261,14 +329,24 @@ export default function App() {
       }),
       candidateName: formData.fullName,
       candidateEmail: formData.email,
+      phone: formData.phone,
+      aadhaar: formData.aadhaar,
+      dob: formData.dob,
+      age: calculateAge(formData.dob),
+      qualification: formData.qualification,
+      gradYear: formData.gradYear,
+      scoreType: scoreType,
+      score: formData.score,
+      testScore: formData.testScore,
       interviewStatus: formData.interviewStatus,
+      offerSent: formData.offerSent,
       outcome,
       strictRuleResults: { ...errors },
       softRuleViolations: { ...softErrors },
       exceptionsUsed,
       overrides: { ...overrides },
       rationale,
-      managerReviewRequired: exceptionsUsed > ELIGIBILITY_RULES.exception_policy.maxExceptions
+      managerReviewRequired: exceptionsUsed > rules.exception_policy.maxExceptions
     };
 
     const updatedLogs = [newRecord, ...auditLogs];
@@ -311,15 +389,68 @@ export default function App() {
   const exportToCSV = () => {
     if (auditLogs.length === 0) return;
     
-    const headers = ['Timestamp', 'Candidate Name', 'Email', 'Eligibility Outcome', 'Exceptions Used', 'Manager Review Required'];
-    const rows = auditLogs.map(log => [
-      log.timestamp,
-      log.candidateName,
-      log.candidateEmail,
-      log.outcome === 'Exception Approved' ? 'Eligible with Exceptions' : log.outcome,
-      log.exceptionsUsed.toString(),
-      log.managerReviewRequired ? 'Yes' : 'No'
-    ]);
+    const headers = [
+      'Evaluation ID',
+      'Timestamp',
+      'Full Name',
+      'Email',
+      'Phone Number',
+      'Aadhaar Number',
+      'Date of Birth',
+      'Age at Evaluation',
+      'Highest Qualification',
+      'Graduation Year',
+      'Score Type',
+      'Percentage Value',
+      'CGPA Value',
+      'Screening Test Score',
+      'Interview Status',
+      'Offer Letter Sent',
+      'Final Eligibility Status',
+      'Exception Count',
+      'Manager Review Required',
+      'Exception Rules Triggered',
+      'Exception Rationales'
+    ];
+
+    const rows = auditLogs.map(log => {
+      const exceptionRules = Object.entries(log.overrides || {})
+        .filter(([_, value]) => value)
+        .map(([key]) => {
+          switch(key) {
+            case 'dob': return 'Age Eligibility';
+            case 'gradYear': return 'Graduation Year';
+            case 'score': return 'Academic Score';
+            case 'testScore': return 'Screening Score';
+            default: return key;
+          }
+        })
+        .join(', ');
+
+      return [
+        log.id || '',
+        log.timestamp,
+        log.candidateName,
+        log.candidateEmail,
+        log.phone || '',
+        log.aadhaar || '',
+        log.dob || '',
+        (log.age !== undefined ? log.age : '').toString(),
+        log.qualification || '',
+        log.gradYear || '',
+        log.scoreType || '',
+        (log.scoreType === 'Percentage' ? log.score || '' : ''),
+        (log.scoreType === 'CGPA' ? log.score || '' : ''),
+        log.testScore || '',
+        log.interviewStatus,
+        log.offerSent || '',
+        log.outcome === 'Exception Approved' ? 'Eligible with Exceptions' : log.outcome,
+        log.exceptionsUsed.toString(),
+        log.managerReviewRequired ? 'Yes' : 'No',
+        exceptionRules,
+        log.rationale || ''
+      ];
+    });
     
     const csvContent = [
       headers.join(','),
@@ -361,6 +492,16 @@ export default function App() {
     document.body.removeChild(link);
   };
 
+  // Audit Dashboard Metrics
+  const totalEvaluations = auditLogs.length;
+  const eligibleCount = auditLogs.filter(log => log.outcome === 'Eligible').length;
+  const exceptionCount = auditLogs.filter(log => log.outcome === 'Exception Approved').length;
+  const blockedCount = auditLogs.filter(log => log.outcome === 'Blocked').length;
+  const managerReviewCount = auditLogs.filter(log => log.managerReviewRequired).length;
+  const exceptionRate = totalEvaluations > 0 
+    ? ((auditLogs.filter(log => log.exceptionsUsed > 0).length / totalEvaluations) * 100).toFixed(1) 
+    : '0.0';
+
   return (
     <div className="min-h-screen bg-page-bg text-slate-900 font-sans selection:bg-indigo-100">
       {/* Top Header Bar */}
@@ -393,6 +534,14 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <button 
+              onClick={() => setView(view === 'config' ? 'form' : 'config')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-all ${view === 'config' ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'border-border-cool text-primary hover:bg-slate-50'}`}
+              title="Rules Configuration"
+            >
+              <Settings className="w-3 h-3" />
+              {view === 'config' ? 'Close Config' : 'Rules Config'}
+            </button>
+            <button 
               onClick={() => view === 'logs' ? resetForm() : setView('logs')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-cool text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-slate-50 transition-all"
             >
@@ -404,7 +553,265 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-8 py-10">
-        {view === 'form' ? (
+        {view === 'config' ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-10"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-extrabold text-primary tracking-tight">Rules Configuration</h1>
+                <p className="text-slate-500 mt-1">Adjust eligibility thresholds and exception policies.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleSaveConfig}
+                  disabled={saveStatus === 'saving'}
+                  className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all ${saveStatus === 'success' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-primary shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]'}`}
+                >
+                  {saveStatus === 'saving' ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : saveStatus === 'success' ? (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'success' ? 'Saved!' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-amber-800">Operational Warning</p>
+                <p className="text-xs text-amber-700/80 mt-0.5">Changes affect all future eligibility evaluations. Existing audit records will remain unchanged for compliance integrity.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-12">
+              {/* Academic Rules */}
+              <div className="bg-card-bg rounded-xl border border-border-cool shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50 bg-white flex items-center gap-3 border-l-[5px] border-l-primary">
+                  <GraduationCap className="w-4 h-4 text-primary" />
+                  <h2 className="font-bold text-primary uppercase tracking-wider text-[11px]">Academic Thresholds</h2>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Minimum Percentage (%)</label>
+                    <input 
+                      type="number" 
+                      value={configRules.soft_rules.percentage.min}
+                      onChange={(e) => setConfigRules({
+                        ...configRules,
+                        soft_rules: {
+                          ...configRules.soft_rules,
+                          percentage: { ...configRules.soft_rules.percentage, min: Number(e.target.value) }
+                        }
+                      })}
+                      className={`w-full px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all ${configErrors.percentage ? 'border-red-500' : 'border-border-cool'}`}
+                    />
+                    {configErrors.percentage && <p className="text-[10px] text-red-600 font-bold">{configErrors.percentage}</p>}
+                    <p className="text-[10px] text-slate-400 italic">Standard cutoff for academic eligibility.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Min CGPA</label>
+                      <input 
+                        type="number" 
+                        step="0.1"
+                        value={configRules.soft_rules.cgpa.min}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            cgpa: { ...configRules.soft_rules.cgpa, min: Number(e.target.value) }
+                          }
+                        })}
+                        className={`w-full px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all ${configErrors.cgpa ? 'border-red-500' : 'border-border-cool'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Max CGPA</label>
+                      <input 
+                        type="number" 
+                        step="0.1"
+                        value={configRules.soft_rules.cgpa.max}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            cgpa: { ...configRules.soft_rules.cgpa, max: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-2.5 rounded-lg border border-border-cool bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+                      />
+                    </div>
+                  </div>
+                  {configErrors.cgpa && <p className="text-[10px] text-red-600 font-bold">{configErrors.cgpa}</p>}
+                </div>
+              </div>
+
+              {/* Assessment Rules */}
+              <div className="bg-card-bg rounded-xl border border-border-cool shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50 bg-white flex items-center gap-3 border-l-[5px] border-l-primary">
+                  <ClipboardCheck className="w-4 h-4 text-primary" />
+                  <h2 className="font-bold text-primary uppercase tracking-wider text-[11px]">Assessment Cutoffs</h2>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Min Test Score</label>
+                      <input 
+                        type="number" 
+                        value={configRules.soft_rules.screeningScore.min}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            screeningScore: { ...configRules.soft_rules.screeningScore, min: Number(e.target.value) }
+                          }
+                        })}
+                        className={`w-full px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all ${configErrors.screeningScore ? 'border-red-500' : 'border-border-cool'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Max Test Score</label>
+                      <input 
+                        type="number" 
+                        value={configRules.soft_rules.screeningScore.max}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            screeningScore: { ...configRules.soft_rules.screeningScore, max: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-2.5 rounded-lg border border-border-cool bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+                      />
+                    </div>
+                  </div>
+                  {configErrors.screeningScore && <p className="text-[10px] text-red-600 font-bold">{configErrors.screeningScore}</p>}
+                  <p className="text-[10px] text-slate-400 italic">Screening test performance requirements.</p>
+                </div>
+              </div>
+
+              {/* Age & Graduation Rules */}
+              <div className="bg-card-bg rounded-xl border border-border-cool shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50 bg-white flex items-center gap-3 border-l-[5px] border-l-primary">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <h2 className="font-bold text-primary uppercase tracking-wider text-[11px]">Demographic & Timeline</h2>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Min Age</label>
+                      <input 
+                        type="number" 
+                        value={configRules.soft_rules.age.min}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            age: { ...configRules.soft_rules.age, min: Number(e.target.value) }
+                          }
+                        })}
+                        className={`w-full px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all ${configErrors.age ? 'border-red-500' : 'border-border-cool'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Max Age</label>
+                      <input 
+                        type="number" 
+                        value={configRules.soft_rules.age.max}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            age: { ...configRules.soft_rules.age, max: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-2.5 rounded-lg border border-border-cool bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+                      />
+                    </div>
+                  </div>
+                  {configErrors.age && <p className="text-[10px] text-red-600 font-bold">{configErrors.age}</p>}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Start Year</label>
+                      <input 
+                        type="number" 
+                        value={configRules.soft_rules.graduationYear.min}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            graduationYear: { ...configRules.soft_rules.graduationYear, min: Number(e.target.value) }
+                          }
+                        })}
+                        className={`w-full px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all ${configErrors.graduationYear ? 'border-red-500' : 'border-border-cool'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">End Year</label>
+                      <input 
+                        type="number" 
+                        value={configRules.soft_rules.graduationYear.max}
+                        onChange={(e) => setConfigRules({
+                          ...configRules,
+                          soft_rules: {
+                            ...configRules.soft_rules,
+                            graduationYear: { ...configRules.soft_rules.graduationYear, max: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-2.5 rounded-lg border border-border-cool bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+                      />
+                    </div>
+                  </div>
+                  {configErrors.graduationYear && <p className="text-[10px] text-red-600 font-bold">{configErrors.graduationYear}</p>}
+                </div>
+              </div>
+
+              {/* Exception Policy */}
+              <div className="bg-card-bg rounded-xl border border-border-cool shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50 bg-white flex items-center gap-3 border-l-[5px] border-l-primary">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <h2 className="font-bold text-primary uppercase tracking-wider text-[11px]">Exception Policy</h2>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Max Exceptions Allowed</label>
+                    <input 
+                      type="number" 
+                      value={configRules.exception_policy.maxExceptions}
+                      onChange={(e) => setConfigRules({
+                        ...configRules,
+                        exception_policy: { ...configRules.exception_policy, maxExceptions: Number(e.target.value) }
+                      })}
+                      className="w-full px-4 py-2.5 rounded-lg border border-border-cool bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+                    />
+                    <p className="text-[10px] text-slate-400 italic">Maximum number of soft rule violations a candidate can override.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Min Rationale Length</label>
+                    <input 
+                      type="number" 
+                      value={configRules.exception_policy.rationaleMinLength}
+                      onChange={(e) => setConfigRules({
+                        ...configRules,
+                        exception_policy: { ...configRules.exception_policy, rationaleMinLength: Number(e.target.value) }
+                      })}
+                      className="w-full px-4 py-2.5 rounded-lg border border-border-cool bg-white focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+                    />
+                    <p className="text-[10px] text-slate-400 italic">Minimum characters required for justification text.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : view === 'form' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             
             {/* Left Column: Form Sections */}
@@ -416,7 +823,7 @@ export default function App() {
             >
               {/* Hard Stop Banner for Rejected Status */}
               <AnimatePresence>
-                {formData.interviewStatus === ELIGIBILITY_RULES.strict_rules.interviewStatus.blockedValue && (
+                {formData.interviewStatus === rules.strict_rules.interviewStatus.blockedValue && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                     animate={{ opacity: 1, height: 'auto', marginBottom: 32 }}
@@ -430,7 +837,7 @@ export default function App() {
                       <div>
                         <h3 className="text-red-900 font-bold text-lg">Evaluation Blocked</h3>
                         <p className="text-red-700 mt-1 font-medium">
-                          {ELIGIBILITY_RULES.strict_rules.interviewStatus.errorMessage}
+                          {rules.strict_rules.interviewStatus.errorMessage}
                         </p>
                         <p className="text-red-600/80 text-sm mt-2">
                           This is a system-enforced policy. Please contact the admissions committee if you believe this is an error.
@@ -582,7 +989,7 @@ export default function App() {
                           className={`w-full px-4 py-2.5 rounded-lg border bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all text-slate-700 ${errors.qualification ? 'border-red-500 ring-1 ring-red-500/20' : 'border-border-cool'}`}
                         >
                           <option value="">Select Qualification</option>
-                          {ELIGIBILITY_RULES.strict_rules.qualification.allowed.map(q => (
+                          {rules.strict_rules.qualification.allowed.map(q => (
                             <option key={q} value={q}>{q}</option>
                           ))}
                         </select>
@@ -721,7 +1128,7 @@ export default function App() {
                           className={`w-full px-4 py-2.5 rounded-lg border bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all text-slate-700 ${errors.interviewStatus ? 'border-red-500 ring-1 ring-red-500/20' : 'border-border-cool'}`}
                         >
                           <option value="">Select Status</option>
-                          {ELIGIBILITY_RULES.strict_rules.interviewStatus.allowedValues.map(s => (
+                          {rules.strict_rules.interviewStatus.allowedValues.map(s => (
                             <option key={s} value={s}>{s}</option>
                           ))}
                         </select>
@@ -773,7 +1180,7 @@ export default function App() {
                           <div className="bg-red-50/50 border border-red-100 p-3 rounded-lg flex items-start gap-2 max-w-xl">
                             <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                             <p className="text-xs text-red-700 font-semibold leading-relaxed">
-                              {ELIGIBILITY_RULES.strict_rules.offerSent.errorMessage}
+                              {rules.strict_rules.offerSent.errorMessage}
                             </p>
                           </div>
                         )}
@@ -799,8 +1206,8 @@ export default function App() {
                         <div className="space-y-2">
                           <label htmlFor="rationale" className="text-xs font-bold text-amber-800 uppercase tracking-wide flex items-center justify-between">
                             <span>Justification for Overrides</span>
-                            <span className={`text-[10px] ${rationale.trim().length >= ELIGIBILITY_RULES.exception_policy.rationaleMinLength ? 'text-emerald-600' : 'text-amber-600'}`}>
-                              {rationale.trim().length} / {ELIGIBILITY_RULES.exception_policy.rationaleMinLength} characters
+                            <span className={`text-[10px] ${rationale.trim().length >= rules.exception_policy.rationaleMinLength ? 'text-emerald-600' : 'text-amber-600'}`}>
+                              {rationale.trim().length} / {rules.exception_policy.rationaleMinLength} characters
                             </span>
                           </label>
                           <textarea 
@@ -875,17 +1282,17 @@ export default function App() {
                         <FileText className={`w-3.5 h-3.5 ${exceptionsUsed > 0 ? 'text-primary' : 'text-slate-300'}`} />
                         <span className="text-xs font-semibold text-slate-700">Exceptions</span>
                       </div>
-                      <span className={`text-xs font-bold ${exceptionsUsed > ELIGIBILITY_RULES.exception_policy.maxExceptions ? 'text-amber-600' : 'text-primary'}`}>
-                        {exceptionsUsed} / {ELIGIBILITY_RULES.exception_policy.maxExceptions}
+                      <span className={`text-xs font-bold ${exceptionsUsed > rules.exception_policy.maxExceptions ? 'text-amber-600' : 'text-primary'}`}>
+                        {exceptionsUsed} / {rules.exception_policy.maxExceptions}
                       </span>
                     </div>
                   </div>
 
-                  {exceptionsUsed > ELIGIBILITY_RULES.exception_policy.maxExceptions && (
+                  {exceptionsUsed > rules.exception_policy.maxExceptions && (
                     <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg flex items-start gap-2">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
                       <p className="text-[10px] text-amber-800 font-bold leading-tight">
-                        {ELIGIBILITY_RULES.exception_policy.managerReviewMessage}
+                        {rules.exception_policy.managerReviewMessage}
                       </p>
                     </div>
                   )}
@@ -899,8 +1306,8 @@ export default function App() {
                   </button>
                   
                   <p className="text-[10px] text-center text-slate-400 leading-relaxed">
-                    {!isFormValid && anyExceptionEnabled && rationale.trim().length < ELIGIBILITY_RULES.exception_policy.rationaleMinLength
-                      ? `Rationale must be at least ${ELIGIBILITY_RULES.exception_policy.rationaleMinLength} characters long.`
+                    {!isFormValid && anyExceptionEnabled && rationale.trim().length < rules.exception_policy.rationaleMinLength
+                      ? `Rationale must be at least ${rules.exception_policy.rationaleMinLength} characters long.`
                       : !isFormValid && Object.keys(softErrors).some(field => !overrides[field])
                       ? "All soft rule violations must be overridden with an exception."
                       : isFormValid 
@@ -1123,6 +1530,34 @@ export default function App() {
                     )}
                   </AnimatePresence>
                 </div>
+              </div>
+            </div>
+
+            {/* Audit Dashboard */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="bg-card-bg p-4 rounded-xl border border-border-cool shadow-sm">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Evaluations</p>
+                <p className="text-2xl font-extrabold text-primary">{totalEvaluations}</p>
+              </div>
+              <div className="bg-card-bg p-4 rounded-xl border border-border-cool shadow-sm border-l-4 border-l-emerald-500">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Eligible</p>
+                <p className="text-2xl font-extrabold text-emerald-600">{eligibleCount}</p>
+              </div>
+              <div className="bg-card-bg p-4 rounded-xl border border-border-cool shadow-sm border-l-4 border-l-amber-500">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">With Exceptions</p>
+                <p className="text-2xl font-extrabold text-amber-600">{exceptionCount}</p>
+              </div>
+              <div className="bg-card-bg p-4 rounded-xl border border-border-cool shadow-sm border-l-4 border-l-red-500">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Blocked</p>
+                <p className="text-2xl font-extrabold text-red-600">{blockedCount}</p>
+              </div>
+              <div className="bg-card-bg p-4 rounded-xl border border-border-cool shadow-sm border-l-4 border-l-amber-400">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Manager Review</p>
+                <p className="text-2xl font-extrabold text-amber-700">{managerReviewCount}</p>
+              </div>
+              <div className="bg-card-bg p-4 rounded-xl border border-border-cool shadow-sm">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Exception Rate</p>
+                <p className="text-2xl font-extrabold text-primary">{exceptionRate}%</p>
               </div>
             </div>
 
