@@ -60,3 +60,20 @@
   - Used screenshots and demo flow to reduce the need for live explanation during evaluation
 - **Outcome:** 
   - Project is fully documented, easy to understand, and ready for review, demo, or interview discussion
+
+  ## Sprint 5 
+
+- **Goal:** Extend the system with operational configurability and enhanced audit visibility while preserving core governance rules
+- **Done:**
+  - Added a Rules Configuration page for editing eligibility thresholds without code changes
+  - Enabled dynamic updates for age, academic, screening, and exception limits
+  - Implemented validation and persistence of rule configurations using client-side storage
+  - Added an audit dashboard summarizing eligibility outcomes and exception usage
+  - Enhanced CSV export to include full candidate, evaluation, and exception data
+- **Blockers:** None
+- **Key Decisions:**
+  - Restricted configurability to threshold values only to prevent misuse
+  - Ensured rule changes apply only to future evaluations
+  - Kept all Sprint 5 features read-only with respect to historical audit records
+- **Outcome:**
+  - AdmitGuard now supports governed rule evolution, operational monitoring, and audit-ready data export in a fully client-side deployment

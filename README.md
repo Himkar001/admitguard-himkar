@@ -66,7 +66,7 @@ AdmitGuard currently functions as a complete eligibility evaluation gate with go
 The AdmitGuard application is deployed as a client-side web application.
 
 🔗 **Live URL:**  
-https://admitguard-himkar.vercel.app
+https://admitguard-himkar.vercel.app/
 
 > Note: The application runs entirely on the client side. No backend services are used in this prototype.
 
@@ -109,3 +109,46 @@ npm run dev
 - **Presentation Deck:** `docs/presentation.pdf`
 - **Rule Configuration:** `config/rules.json`
 - **Sprint Log:** `sprint-log.md`
+
+## Advanced Governance Features (Sprint 5)
+
+### Rules Configuration Console
+AdmitGuard includes a Rules Configuration page that allows operations teams to modify eligibility thresholds without changing application code.
+
+Configurable parameters include:
+- Minimum and maximum age limits
+- Percentage and CGPA thresholds
+- Screening test score limits
+- Graduation year range
+- Maximum allowed exceptions per candidate
+
+All changes are validated, persisted client-side, and apply only to future eligibility evaluations. Core rule logic and strict vs soft classifications remain unchanged.
+
+---
+
+### Audit Dashboard
+The Audit Log view includes a summary dashboard that provides operational visibility into eligibility decisions.
+
+The dashboard displays:
+- Total evaluations
+- Eligible candidates
+- Eligible with exceptions
+- Blocked / rejected candidates
+- Manager review required count
+- Exception usage rate
+
+All metrics are derived dynamically from existing audit records and are read-only.
+
+---
+
+### Enhanced CSV Export
+Audit data can be exported as a comprehensive CSV file suitable for operational review and compliance reporting.
+
+Each export includes:
+- Complete candidate input details
+- Academic and assessment data
+- Final eligibility outcome
+- Exception rules and rationales
+- Governance flags and timestamps
+
+The export reflects the audit log exactly and does not modify stored records.
