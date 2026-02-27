@@ -76,7 +76,7 @@ https://admitguard-himkar.vercel.app/
 
 To run the project locally:
 
-```bash
+
 npm install
 npm run dev
 
@@ -111,7 +111,7 @@ npm run dev
 - **Sprint Log:** `sprint-log.md`
 
 
-## Documentation & Presentation  (sprint 5)
+## Documentation & Presentation  (sprint 4)
 
 - **Goal:** Make the project evaluator-ready through clear documentation and presentation
 - **Done:**
